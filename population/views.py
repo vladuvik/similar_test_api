@@ -1,7 +1,4 @@
-import functools
-
 from celery.result import AsyncResult
-from django.db import transaction
 
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
@@ -13,13 +10,15 @@ from population.tasks import generate_population_report
 
 
 class RetrievePopulationReportView(GenericAPIView):
+    """
+    View to retrieve population results from a specific task result.
+    """
 
     permission_classes = (AllowAny,)
 
     def get(self, request, *args, **kwargs):
         task_id = kwargs.get('uuid')
         task = AsyncResult(task_id)
-        breakpoint()
         if not task.ready():
             return Response(
                 status=status.HTTP_202_ACCEPTED,
@@ -27,19 +26,28 @@ class RetrievePopulationReportView(GenericAPIView):
                     'task': {
                         'id': task_id,
                         'status': 'PROGRESS',
-
                     }
                 }
             )
 
         result = task.get()
 
-        breakpoint()
-
-        return Response()
+        return Response(
+            status=status.HTTP_200_OK,
+            data={
+                'task': {
+                    'id': task_id,
+                    'status': task.status,
+                },
+                'result': result
+            }
+        )
 
 
 class InitiatePopulationResultView(GenericAPIView):
+    """
+    View to initiate retrieval process by delay the task to process it in the background.
+    """
 
     permission_classes = (AllowAny,)
     serializer_class = PopulationReportSerializer
